@@ -622,6 +622,7 @@ create policy "love_sync update" on public.love_sync
   var todayStr = isoDate(new Date());
   var autoPushTimer = null;
   var suppressAutoPush = false;
+  var pendingSyncAction = null;
 
   function $(id){ return document.getElementById(id); }
 
@@ -1302,7 +1303,11 @@ create policy "love_sync update" on public.love_sync
       suppressAutoPush = false;
       if(ok){
         applyMusic();
-        renderAll();
+        if(!$('setup').classList.contains('hidden') && state.settings.startDate){
+          enterApp();
+        }else{
+          renderAll();
+        }
         var when = rows[0].updated_at ? new Date(rows[0].updated_at).toLocaleString('zh-CN') : '';
         setSyncStatus('已下载云端数据' + (when ? ' · ' + when : ''));
         toast('已从云端同步');
@@ -1320,6 +1325,41 @@ create policy "love_sync update" on public.love_sync
     if(!syncReady() || !c.auto) return;
     clearTimeout(autoPushTimer);
     autoPushTimer = setTimeout(function(){ pushCloud(false); }, 1600);
+  }
+
+  // One-click setup link: #sync=<base64url JSON {u,k,r,m}>
+  function handleSyncLink(){
+    var hash = location.hash || '';
+    if(hash.indexOf('#sync=') !== 0) return;
+    var cfg;
+    try{
+      var b64 = decodeURIComponent(hash.slice(6)).replace(/-/g, '+').replace(/_/g, '/');
+      while(b64.length % 4) b64 += '=';
+      cfg = JSON.parse(atob(b64));
+    }catch(e){
+      console.warn('sync link parse failed', e);
+      return;
+    }
+    if(!cfg || !cfg.u || !cfg.k) return;
+
+    state.settings.sync = {
+      url: String(cfg.u).replace(/\/+$/, ''),
+      key: String(cfg.k),
+      room: String(cfg.r || ''),
+      auto: !!cfg.a
+    };
+    suppressAutoPush = true;
+    save();
+    suppressAutoPush = false;
+    history.replaceState(null, '', location.pathname + location.search);
+    renderSettings();
+
+    if(!$('setup').classList.contains('hidden')){
+      pendingSyncAction = cfg.m || null;
+      return;
+    }
+    if(cfg.m === 'pull') setTimeout(pullCloud, 400);
+    else if(cfg.m === 'push') setTimeout(function(){ pushCloud(true); }, 400);
   }
 
   /* ---------- init ---------- */
@@ -1355,7 +1395,13 @@ create policy "love_sync update" on public.love_sync
       state.settings.myName = $('setName1').value.trim();
       state.settings.herName = $('setName2').value.trim();
       state.settings.startDate = start;
-      if(save()) enterApp();
+      if(save()){
+        enterApp();
+        if(pendingSyncAction === 'pull'){
+          pendingSyncAction = null;
+          setTimeout(pullCloud, 500);
+        }
+      }
     });
 
     // tabs
@@ -1659,6 +1705,8 @@ create policy "love_sync update" on public.love_sync
       try{ localStorage.removeItem(KEY); }catch(e){}
       location.reload();
     });
+
+    handleSyncLink();
   }
 
   if(document.readyState === 'loading'){
