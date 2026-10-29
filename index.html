@@ -1354,12 +1354,15 @@ create policy "love_sync update" on public.love_sync
     history.replaceState(null, '', location.pathname + location.search);
     renderSettings();
 
+    if(cfg.m === 'pull'){
+      setTimeout(pullCloud, 400);
+      return;
+    }
     if(!$('setup').classList.contains('hidden')){
       pendingSyncAction = cfg.m || null;
       return;
     }
-    if(cfg.m === 'pull') setTimeout(pullCloud, 400);
-    else if(cfg.m === 'push') setTimeout(function(){ pushCloud(true); }, 400);
+    if(cfg.m === 'push') setTimeout(function(){ pushCloud(true); }, 400);
   }
 
   /* ---------- init ---------- */
