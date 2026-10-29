@@ -1,0 +1,15 @@
+# Local Netlify folder
+.netlify
+
+# Dependencies
+node_modules/
+
+# Netlify 账户信息（含密钥，切勿提交）
+sites.json
+update-site.json
+
+# 本地辅助脚本与素材
+*.ps1
+*.bat
+demo-*.png
+new-style.css
