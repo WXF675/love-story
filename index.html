@@ -522,7 +522,7 @@
           <p>用 Supabase 免费项目，在两台设备之间共享同一份数据。先在 Supabase 建一张表（下方 SQL），再把项目地址、anon key 和同一个房间码填进来。</p>
           <form class="form" id="syncForm" style="padding:0;margin-top:12px">
             <label>项目 URL<input id="syncUrl" placeholder="https://xxxx.supabase.co"></label>
-            <label>anon key<input id="syncKey" placeholder="eyJhbGciOi..."></label>
+            <label>Publishable key / anon key<input id="syncKey" placeholder="sb_publishable_... 或 eyJ..."></label>
             <div class="row2">
               <label>房间码<input id="syncRoom" maxlength="40" placeholder="自己定一串字母数字"></label>
               <label style="display:flex;flex-direction:row;align-items:center;gap:10px;font-size:14px;color:var(--ink);align-self:end;padding-bottom:10px">
@@ -1222,11 +1222,13 @@ create policy "love_sync update" on public.love_sync
 
   function syncHeaders(){
     var c = syncConfig();
-    return {
+    var headers = {
       'apikey': c.key,
-      'Authorization': 'Bearer ' + c.key,
       'Content-Type': 'application/json'
     };
+    // New sb_publishable_ keys are not JWTs and must not go in Authorization.
+    if(c.key.indexOf('eyJ') === 0) headers['Authorization'] = 'Bearer ' + c.key;
+    return headers;
   }
 
   function setSyncStatus(msg, isError){
